@@ -33,6 +33,49 @@ public class SimpleDatabase {
         }
     }
 
+    static class Cursor {
+
+        private Table table;
+        private int rowNum;
+        private boolean endOfTable;
+
+        public Cursor(Table table, int rowNum,boolean endOfTable) {
+
+            this.table = table;
+            this.rowNum = rowNum;
+            this.endOfTable = endOfTable;
+        }
+    }
+
+    static Cursor startTable(Table table) {
+
+        return new Cursor(table, 0, table.numRows==0);
+    }
+
+    static Cursor endTable(Table table) {
+
+        return new Cursor(table, table.numRows, true);
+    }
+
+    static ByteBuffer cursorValue(Cursor cursor) throws IOException {
+
+        int pageNum = cursor.rowNum/ROWS_PER_PAGE;
+        ByteBuffer page = cursor.table.pager.getFile(pageNum);
+        int rowOffset = (cursor.rowNum%ROWS_PER_PAGE)*ROW_SIZE;
+        page.position(rowOffset);
+        return page;
+              
+    }
+
+    static void cursorAdvance(Cursor cursor) {
+
+        cursor.rowNum++;
+
+        if(cursor.rowNum>=cursor.table.numRows) {
+            cursor.endOfTable = true;
+        }
+    }
+
     static class Table {
 
         private Pager pager;
@@ -223,34 +266,41 @@ public class SimpleDatabase {
             return;
         }
 
-        int rowNumber = table.numRows;
-        int pageNum = rowNumber/ROWS_PER_PAGE;
-        int offset = (rowNumber%ROWS_PER_PAGE)*ROW_SIZE;
-        // byte[] destination = rowSlot(table,offset);
-        ByteBuffer byteBuffer = table.pager.getFile(pageNum);
-        if (byteBuffer == null) {
-            System.out.println("Error: Retrieved ByteBuffer is null for page " + pageNum);
-            return;
-        }
-        
-        System.out.println("Page " + pageNum + " ByteBuffer capacity: " + byteBuffer.capacity());
-        System.out.println("Offset: " + offset + ", ROW_SIZE: " + ROW_SIZE);
+        // int rowNumber = table.numRows;
+        // int pageNum = rowNumber/ROWS_PER_PAGE;
+        // int offset = (rowNumber%ROWS_PER_PAGE)*ROW_SIZE;
+        // // byte[] destination = rowSlot(table,offset);
+        // ByteBuffer byteBuffer = table.pager.getFile(pageNum);
 
-        serialization(statement.RowToInsert,byteBuffer,offset);
+        Cursor cursor = endTable(table);
+
+        ByteBuffer byteBuffer = cursorValue(cursor);
+
+        serialization(statement.RowToInsert,byteBuffer);
         table.numRows++;
     }
 
     private static void executeSelectStatement(Table table) throws IOException {
 
-        for(int i=0;i<table.numRows;i++) {
+        // for(int i=0;i<table.numRows;i++) {
 
-            int pageNum = i / ROWS_PER_PAGE;
-            // byte[] page = table.pages[pageNum];
-            int offset = (i%ROWS_PER_PAGE)*ROW_SIZE;
-            // byte[] source = table.pages[pageNum];
-            ByteBuffer byteBuffer = table.pager.getFile(pageNum);
-            Row row = deserialization(byteBuffer,offset);
+        //     int pageNum = i / ROWS_PER_PAGE;
+        //     // byte[] page = table.pages[pageNum];
+        //     int offset = (i%ROWS_PER_PAGE)*ROW_SIZE;
+        //     // byte[] source = table.pages[pageNum];
+        //     ByteBuffer byteBuffer = table.pager.getFile(pageNum);
+        //     Row row = deserialization(byteBuffer,offset);
+        //     PrintRow(row);
+        // }
+        Cursor cursor = startTable(table);
+        
+
+        while(!cursor.endOfTable) {
+
+            ByteBuffer byteBuffer = cursorValue(cursor);
+            Row row = deserialization(byteBuffer);
             PrintRow(row);
+            cursorAdvance(cursor);
         }
     }
 
@@ -270,13 +320,13 @@ public class SimpleDatabase {
     //     return table.pages[pageNum]; // Return the page
     // }
 
-    private static void serialization(Row source,ByteBuffer destination,int offset) {
+    private static void serialization(Row source,ByteBuffer destination) {
 
-        // ByteBuffer byteBuffer = ByteBuffer.wrap(destination);
-        if (offset + ROW_SIZE > destination.capacity()) {
-        throw new BufferOverflowException(); 
-        }
-        destination.position(offset);
+        // // ByteBuffer byteBuffer = ByteBuffer.wrap(destination);
+        // if (offset + ROW_SIZE > destination.capacity()) {
+        // throw new BufferOverflowException(); 
+        // }
+        // destination.position(offset);
         destination.putInt(source.id);
         putString(destination,source.userName,USER_SIZE);
         putString(destination,source.email,EMAIL_SIZE);
@@ -330,10 +380,10 @@ public class SimpleDatabase {
 
     }
 
-    private static Row deserialization(ByteBuffer source,int offset) {
+    private static Row deserialization(ByteBuffer source) {
 
         // ByteBuffer byteBuffer = ByteBuffer.wrap(source);
-        source.position(offset);
+        // source.position(offset);
         int id = source.getInt();
         String username = getString(source,USER_SIZE);
         String email = getString(source,EMAIL_SIZE);
