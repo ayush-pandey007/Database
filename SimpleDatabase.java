@@ -8,16 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 public class SimpleDatabase {
 
-    private static final int ID_SIZE = 4;
-    private static final int USER_SIZE = 32;
-    private static final int EMAIL_SIZE = 255;
-    private static final int ROW_SIZE = ID_SIZE+USER_SIZE+EMAIL_SIZE;
 
-
-    private static final int PAGE_SIZE = 4096;
-    private static final int ROWS_PER_PAGE = PAGE_SIZE/ROW_SIZE;
-    private static final int TABLE_MAX_PAGES = 100;
-    private static final int TABLE_MAX_ROWS =ROWS_PER_PAGE * TABLE_MAX_PAGES;
 
     static class Row {
 
@@ -31,70 +22,7 @@ public class SimpleDatabase {
             this.userName = userName;
             this.email = email;
         }
-    }
-
-    static class Cursor {
-
-        private Table table;
-        private int rowNum;
-        private boolean endOfTable;
-
-        public Cursor(Table table, int rowNum,boolean endOfTable) {
-
-            this.table = table;
-            this.rowNum = rowNum;
-            this.endOfTable = endOfTable;
-        }
-    }
-
-    static Cursor startTable(Table table) {
-
-        return new Cursor(table, 0, table.numRows==0);
-    }
-
-    static Cursor endTable(Table table) {
-
-        return new Cursor(table, table.numRows, true);
-    }
-
-    static ByteBuffer cursorValue(Cursor cursor) throws IOException {
-
-        int pageNum = cursor.rowNum/ROWS_PER_PAGE;
-        ByteBuffer page = cursor.table.pager.getFile(pageNum);
-        int rowOffset = (cursor.rowNum%ROWS_PER_PAGE)*ROW_SIZE;
-        page.position(rowOffset);
-        return page;
-              
-    }
-
-    static void cursorAdvance(Cursor cursor) {
-
-        cursor.rowNum++;
-
-        if(cursor.rowNum>=cursor.table.numRows) {
-            cursor.endOfTable = true;
-        }
-    }
-
-    static class Table {
-
-        private Pager pager;
-        private int numRows;
-
-        Table(String filename) throws IOException {
-
-           this.pager = new Pager(filename);
-           this.numRows = (int)(pager.getFileSize()/ROW_SIZE);
-        }
-
-        public void close() throws IOException {
-
-            pager.close();
-        }
-    }
-    
-
-    
+    }    
 
     enum MetaCommandResult {
 
@@ -261,46 +189,30 @@ public class SimpleDatabase {
 
     private static void executeInsertStatement(Statement statement, Table table) throws IOException {
 
-        if(table.numRows>=TABLE_MAX_ROWS) {
+        if(table.getNumRows()>=Constant.TABLE_MAX_ROWS) {
             System.out.println("Table is full");
             return;
         }
 
-        // int rowNumber = table.numRows;
-        // int pageNum = rowNumber/ROWS_PER_PAGE;
-        // int offset = (rowNumber%ROWS_PER_PAGE)*ROW_SIZE;
-        // // byte[] destination = rowSlot(table,offset);
-        // ByteBuffer byteBuffer = table.pager.getFile(pageNum);
+        Cursor cursor = Cursor.endTable(table);
 
-        Cursor cursor = endTable(table);
-
-        ByteBuffer byteBuffer = cursorValue(cursor);
+        ByteBuffer byteBuffer = Cursor.cursorValue(cursor);
 
         serialization(statement.RowToInsert,byteBuffer);
-        table.numRows++;
+        table.setNumRows(table.getNumRows()+1);
     }
 
     private static void executeSelectStatement(Table table) throws IOException {
 
-        // for(int i=0;i<table.numRows;i++) {
-
-        //     int pageNum = i / ROWS_PER_PAGE;
-        //     // byte[] page = table.pages[pageNum];
-        //     int offset = (i%ROWS_PER_PAGE)*ROW_SIZE;
-        //     // byte[] source = table.pages[pageNum];
-        //     ByteBuffer byteBuffer = table.pager.getFile(pageNum);
-        //     Row row = deserialization(byteBuffer,offset);
-        //     PrintRow(row);
-        // }
-        Cursor cursor = startTable(table);
+        Cursor cursor = Cursor.startTable(table);
         
 
-        while(!cursor.endOfTable) {
+        while(!cursor.isEndOfTable()) {
 
-            ByteBuffer byteBuffer = cursorValue(cursor);
+            ByteBuffer byteBuffer = Cursor.cursorValue(cursor);
             Row row = deserialization(byteBuffer);
             PrintRow(row);
-            cursorAdvance(cursor);
+            Cursor.cursorAdvance(cursor);
         }
     }
 
@@ -308,17 +220,6 @@ public class SimpleDatabase {
 
         System.out.printf("(%d, %s, %s)%n", row.id, row.userName, row.email);
     }
-
-    // private static byte[] rowSlot(Table table,int offset) {
-
-    //     int pageNum = table.numRows / ROWS_PER_PAGE; // Calculate which page the row belongs to
-
-    //     if (table.pages[pageNum] == null) { // Allocate the page if it doesn't exist
-    //         table.pages[pageNum] = new byte[PAGE_SIZE];
-    //     }
-    
-    //     return table.pages[pageNum]; // Return the page
-    // }
 
     private static void serialization(Row source,ByteBuffer destination) {
 
@@ -328,8 +229,8 @@ public class SimpleDatabase {
         // }
         // destination.position(offset);
         destination.putInt(source.id);
-        putString(destination,source.userName,USER_SIZE);
-        putString(destination,source.email,EMAIL_SIZE);
+        putString(destination,source.userName,Constant.USER_SIZE);
+        putString(destination,source.email,Constant.EMAIL_SIZE);
 
     }
 
@@ -366,7 +267,7 @@ public class SimpleDatabase {
             String username = parts[2];
             String email = parts[3];
 
-            if(username.length() > USER_SIZE || email.length() > EMAIL_SIZE)
+            if(username.length() > Constant.USER_SIZE || email.length() > Constant.EMAIL_SIZE)
                 return PreparedResult.PREPARED_SYNTAX_ERROR;
             
             statement.RowToInsert = new Row(id, username, email);
@@ -385,8 +286,8 @@ public class SimpleDatabase {
         // ByteBuffer byteBuffer = ByteBuffer.wrap(source);
         // source.position(offset);
         int id = source.getInt();
-        String username = getString(source,USER_SIZE);
-        String email = getString(source,EMAIL_SIZE);
+        String username = getString(source,Constant.USER_SIZE);
+        String email = getString(source,Constant.EMAIL_SIZE);
 
         return new Row(id,username,email);
     }
