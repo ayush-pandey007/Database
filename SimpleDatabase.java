@@ -9,20 +9,7 @@ import java.nio.charset.StandardCharsets;
 public class SimpleDatabase {
 
 
-
-    static class Row {
-
-         private int id;
-         private String userName;
-         private String email;
-
-        Row(int id,String userName,String email) {
-
-            this.id = id;
-            this.userName = userName;
-            this.email = email;
-        }
-    }    
+  
 
     enum MetaCommandResult {
 
@@ -189,17 +176,9 @@ public class SimpleDatabase {
 
     private static void executeInsertStatement(Statement statement, Table table) throws IOException {
 
-        if(table.getNumRows()>=Constant.TABLE_MAX_ROWS) {
-            System.out.println("Table is full");
-            return;
-        }
 
         Cursor cursor = Cursor.endTable(table);
-
-        ByteBuffer byteBuffer = Cursor.cursorValue(cursor);
-
-        serialization(statement.RowToInsert,byteBuffer);
-        table.setNumRows(table.getNumRows()+1);
+        Node.insertLeafNode(cursor,statement.RowToInsert.id, statement.RowToInsert);
     }
 
     private static void executeSelectStatement(Table table) throws IOException {
@@ -209,10 +188,10 @@ public class SimpleDatabase {
 
         while(!cursor.isEndOfTable()) {
 
-            ByteBuffer byteBuffer = Cursor.cursorValue(cursor);
+            ByteBuffer byteBuffer = cursor.cursorValue();
             Row row = deserialization(byteBuffer);
             PrintRow(row);
-            Cursor.cursorAdvance(cursor);
+            cursor.advance();
         }
     }
 
@@ -221,37 +200,31 @@ public class SimpleDatabase {
         System.out.printf("(%d, %s, %s)%n", row.id, row.userName, row.email);
     }
 
-    private static void serialization(Row source,ByteBuffer destination) {
+    // private static void serialization(Row source,ByteBuffer destination) {
+    //     destination.putInt(source.id);
+    //     putString(destination,source.userName,Constant.USER_SIZE);
+    //     putString(destination,source.email,Constant.EMAIL_SIZE);
 
-        // // ByteBuffer byteBuffer = ByteBuffer.wrap(destination);
-        // if (offset + ROW_SIZE > destination.capacity()) {
-        // throw new BufferOverflowException(); 
-        // }
-        // destination.position(offset);
-        destination.putInt(source.id);
-        putString(destination,source.userName,Constant.USER_SIZE);
-        putString(destination,source.email,Constant.EMAIL_SIZE);
+    // }
 
-    }
+    // private static void putString(ByteBuffer byteBuffer,String value,int maxSize) {
 
-    private static void putString(ByteBuffer byteBuffer,String value,int maxSize) {
+    //     byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
 
-        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+    //     int length = Math.min(bytes.length,maxSize);
 
-        int length = Math.min(bytes.length,maxSize);
+    //     if (byteBuffer.remaining() < maxSize) {
+    //         throw new BufferOverflowException(); 
+    //     }
 
-        if (byteBuffer.remaining() < maxSize) {
-            throw new BufferOverflowException(); // Prevent overflow
-        }
+    //     byteBuffer.put(bytes, 0,length);
 
-        byteBuffer.put(bytes, 0,length);
+    //     for(int i= length;i<maxSize;i++) {
 
-        for(int i= length;i<maxSize;i++) {
+    //         byteBuffer.put((byte)0);
+    //     }
 
-            byteBuffer.put((byte)0);
-        }
-
-    }
+    // }
 
     private static PreparedResult prepareInsert(Statement statement,InputBuffer inputBuffer) {
         

@@ -1,9 +1,10 @@
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class Table {
     
     private Pager pager;
-    private int numRows;
+    public int rootPageNum;
 
 
 
@@ -11,7 +12,13 @@ public class Table {
         Table(String filename) throws IOException {
 
            this.pager = new Pager(filename);
-           this.numRows = (int)(pager.getFileSize()/Constant.ROW_SIZE);
+           this.rootPageNum  = 0;
+
+           if(pager.getNumPages()==0) {
+                ByteBuffer rootNode = pager.getPage(0);
+                Node.initializeLeaf(rootNode);
+           }
+
         }
 
         public void close() throws IOException {
@@ -27,13 +34,6 @@ public class Table {
             this.pager = pager;
         }
     
-        public int getNumRows() {
-            return this.numRows;
-        }
-    
-        public void setNumRows(int numRows) {
-            this.numRows = numRows;
-        }
 
     
 }

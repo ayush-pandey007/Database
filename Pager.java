@@ -8,28 +8,43 @@ public class Pager {
     
     private RandomAccessFile file;
     private HashMap<Integer, ByteBuffer> pages = new HashMap<>();
-    private long fileLength;
-    private static final int PAGE_SIZE = 4096;  // Corrected page size
+    private int numPages;
+    private static final int PAGE_SIZE = 4096;  
+
+
+	public int getNumPages() {
+		return this.numPages;
+	}
+
+	public void setNumPages(int numPages) {
+		this.numPages = numPages;
+	}
+
 
     public Pager(String filename) throws IOException {
         File f = new File(filename);
         this.file = new RandomAccessFile(f, "rw");
-        this.fileLength = file.length();
+        this.numPages = (int)(file.length()/Constant.PAGE_SIZE);
     }
 
-    public ByteBuffer getFile(int pageNum) throws IOException {
+   
+
+    public ByteBuffer getPage(int pageNum) throws IOException {
         if (pages.containsKey(pageNum)) {
             return pages.get(pageNum).duplicate(); 
         }
 
-        ByteBuffer page = ByteBuffer.allocate(PAGE_SIZE); // Allocate full page
+        ByteBuffer page = ByteBuffer.allocate(PAGE_SIZE); 
 
-        if (pageNum * PAGE_SIZE < fileLength) {
-            file.seek(pageNum * PAGE_SIZE);  // Correct file seek position
+        if (pageNum < numPages) {
+            file.seek(pageNum * PAGE_SIZE);  
             file.read(page.array());
         }
 
         pages.put(pageNum, page);
+        if(pageNum>=numPages) {
+            numPages = pageNum+1;
+        }
         return page;
     }
 
@@ -48,7 +63,7 @@ public class Pager {
         file.close();
     }
 
-    public long getFileSize() {
-        return fileLength;
-    }
+    // public long getFileSize() {
+    //     return fileLength;
+    // }
 }
