@@ -9,7 +9,7 @@ public class Pager {
     private RandomAccessFile file;
     private HashMap<Integer, ByteBuffer> pages = new HashMap<>();
     private long fileLength;
-    private static final int PAGE_SIZE = 4096;  // Corrected page size
+    private static final int PAGE_SIZE = 4096;  
 
     public Pager(String filename) throws IOException {
         File f = new File(filename);
@@ -22,10 +22,10 @@ public class Pager {
             return pages.get(pageNum).duplicate(); 
         }
 
-        ByteBuffer page = ByteBuffer.allocate(PAGE_SIZE); // Allocate full page
+        ByteBuffer page = ByteBuffer.allocate(PAGE_SIZE); 
 
         if (pageNum * PAGE_SIZE < fileLength) {
-            file.seek(pageNum * PAGE_SIZE);  // Correct file seek position
+            file.seek(pageNum * PAGE_SIZE);  
             file.read(page.array());
         }
 
