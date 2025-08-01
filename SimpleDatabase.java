@@ -30,6 +30,12 @@ public class SimpleDatabase {
         STATEMENT_SELECT
     }
     
+    enum ExecuteResult {
+        EXECUTE_SUCCESS,
+        EXECUTE_DUPLICATE_KEY,
+        EXECUTE_TABLE_FULL
+    }
+    
     static class Statement {
     
         StatementType type;
@@ -117,7 +123,6 @@ public class SimpleDatabase {
             }
 
             executeStatement(statement,table);
-            System.out.println("Executed.");
             
         }
 
@@ -163,22 +168,48 @@ public class SimpleDatabase {
 
         switch (statement.type) {
             case STATEMENT_INSERT:
-                // System.out.println("TODO : insert functionallity");
-                executeInsertStatement(statement, table);
+                ExecuteResult result = executeInsertStatement(statement, table);
+                switch (result) {
+                    case EXECUTE_SUCCESS:
+                        System.out.println("Executed.");
+                        break;
+                    case EXECUTE_DUPLICATE_KEY:
+                        System.out.println("Error: Duplicate key.");
+                        break;
+                    case EXECUTE_TABLE_FULL:
+                        System.out.println("Error: Table full.");
+                        break;
+                }
                 break;
 
             case STATEMENT_SELECT:
-                // System.out.println("TODO : select functionallity");
                 executeSelectStatement(table);
+                System.out.println("Executed.");
                 break;
         }
     }
 
-    private static void executeInsertStatement(Statement statement, Table table) throws IOException {
+    private static ExecuteResult executeInsertStatement(Statement statement, Table table) throws IOException {
+        ByteBuffer node = table.getPager().getPage(table.rootPageNum);
+        int numCells = Node.getLeafNodeCell(node);
+        
+        if (numCells >= Constant.LEAF_NODE_MAX_CELLS) {
+            return ExecuteResult.EXECUTE_TABLE_FULL;
+        }
 
+        Row rowToInsert = statement.RowToInsert;
+        int keyToInsert = rowToInsert.id;
+        Cursor cursor = Node.tableFind(table, keyToInsert);
 
-        Cursor cursor = Cursor.endTable(table);
-        Node.insertLeafNode(cursor,statement.RowToInsert.id, statement.RowToInsert);
+        if (cursor.getCellNum() < numCells) {
+            int keyAtIndex = Node.getLeafNodeKey(node, cursor.getCellNum());
+            if (keyAtIndex == keyToInsert) {
+                return ExecuteResult.EXECUTE_DUPLICATE_KEY;
+            }
+        }
+
+        Node.insertLeafNode(cursor, rowToInsert.id, rowToInsert);
+        return ExecuteResult.EXECUTE_SUCCESS;
     }
 
     private static void executeSelectStatement(Table table) throws IOException {

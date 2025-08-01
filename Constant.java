@@ -1,5 +1,9 @@
 public class Constant {
     
+    // Node Types
+    public static final byte NODE_INTERNAL = 0;
+    public static final byte NODE_LEAF = 1;
+    
     public static final int ID_SIZE = 4;
     public static final int USER_SIZE = 32;
     public static final int EMAIL_SIZE = 255;
