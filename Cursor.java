@@ -52,20 +52,10 @@ public class Cursor {
     }
     
     static Cursor startTable(Table table) throws IOException {
-
         ByteBuffer rootNode = table.getPager().getPage(table.rootPageNum);
         int numCells = Node.getLeafNodeCell(rootNode);
-        return new Cursor(table, table.rootPageNum, numCells, true);
-        // return new Cursor(table, 0, table.getNumRows()==0);
-
-    }
-
-    static Cursor endTable(Table table) throws IOException {
-
-        ByteBuffer rootNode = table.getPager().getPage(table.rootPageNum);
-        int numCells = Node.getLeafNodeCell(rootNode);
-        return new Cursor(table, table.rootPageNum, numCells, false);
-        // return new Cursor(table, table.getNumRows(), true);
+        boolean endOfTable = (numCells == 0);
+        return new Cursor(table, table.rootPageNum, 0, endOfTable);
     }
 
     public ByteBuffer cursorValue() throws IOException {
