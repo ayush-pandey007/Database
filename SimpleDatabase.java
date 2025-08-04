@@ -135,9 +135,54 @@ public class SimpleDatabase {
                 System.out.println(e.getMessage());
             }
             System.exit(0);
+        } else if(buffer.equals(".btree")) {
+            System.out.println("Tree:");
+            try {
+                printTree(table.getPager(), 0, 0);
+            } catch(IOException e) {
+                System.out.println("Error printing tree: " + e.getMessage());
+            }
+            return MetaCommandResult.META_COMMAND_SUCCESS;
         }
 
         return MetaCommandResult.META_COMMAND_UNRECOGNIZED_COMMAND;
+    }
+    
+    private static void indent(int level) {
+        for (int i = 0; i < level; i++) {
+            System.out.print("  ");
+        }
+    }
+
+    private static void printTree(Pager pager, int pageNum, int indentationLevel) throws IOException {
+        ByteBuffer node = pager.getPage(pageNum);
+        int numKeys, child;
+
+        switch (Node.getNodeType(node)) {
+            case Constant.NODE_LEAF:
+                numKeys = Node.getLeafNodeCell(node);
+                indent(indentationLevel);
+                System.out.printf("- leaf (size %d)%n", numKeys);
+                for (int i = 0; i < numKeys; i++) {
+                    indent(indentationLevel + 1);
+                    System.out.printf("- %d%n", Node.getLeafNodeKey(node, i));
+                }
+                break;
+            case Constant.NODE_INTERNAL:
+                numKeys = Node.getInternalNodeNumKeys(node);
+                indent(indentationLevel);
+                System.out.printf("- internal (size %d)%n", numKeys);
+                for (int i = 0; i < numKeys; i++) {
+                    child = Node.getInternalNodeChild(node, i);
+                    printTree(pager, child, indentationLevel + 1);
+
+                    indent(indentationLevel + 1);
+                    System.out.printf("- key %d%n", Node.getInternalNodeKey(node, i));
+                }
+                child = Node.getInternalNodeRightChild(node);
+                printTree(pager, child, indentationLevel + 1);
+                break;
+        }
     }
 
     private static PreparedResult prepareStatement(Statement statement,InputBuffer inputBuffer) {

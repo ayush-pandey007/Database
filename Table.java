@@ -15,8 +15,10 @@ public class Table {
            this.rootPageNum  = 0;
 
            if(pager.getNumPages()==0) {
+                // New database file. Initialize page 0 as leaf node.
                 ByteBuffer rootNode = pager.getPage(0);
                 Node.initializeLeaf(rootNode);
+                Node.setNodeRoot(rootNode, true);
            }
 
         }
