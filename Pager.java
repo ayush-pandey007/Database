@@ -63,6 +63,14 @@ public class Pager {
         file.close();
     }
 
+    /*
+    Until we start recycling free pages, new pages will always
+    go onto the end of the database file
+    */
+    public int getUnusedPageNum() {
+        return numPages;
+    }
+
     // public long getFileSize() {
     //     return fileLength;
     // }
