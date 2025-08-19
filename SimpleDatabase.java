@@ -156,7 +156,7 @@ public class SimpleDatabase {
 
 
             executeStatement(statement,table);
-            System.out.println("Executed.");
+            // System.out.println("Executed.");
            
         }
 
