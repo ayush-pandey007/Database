@@ -288,7 +288,9 @@ public class Node {
         }
 
 
-
+        Cursor tempFind = leafNodeFind(cursor.getTable(), oldPageNum, key);
+        int insertIndex = tempFind.getCellNum();
+        
 
         int newPageNum = pager.getNumPages();
         ByteBuffer newNode = pager.getPage(newPageNum);
@@ -308,8 +310,7 @@ public class Node {
 
 
 
-        Cursor tempFind = leafNodeFind(cursor.getTable(), oldPageNum, key);
-        int insertIndex = tempFind.getCellNum();
+
 
 
 
